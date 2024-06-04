@@ -285,6 +285,8 @@ def dht(my_board, pin, callback, dht_type):
     # set the pin mode for the DHT device
     my_board.set_pin_mode_dht(pin, callback, dht_type)
 
+curr_temp = 0.0;
+
 def the_callback(data):
     # noinspection GrazieInspection
     """
@@ -301,6 +303,7 @@ def the_callback(data):
         print(f'DHT Error Report:'
               f'Pin: {data[2]} DHT Type: {data[3]} Error: {data[1]}  Time: {date}')
     else:
+        curr_temp = data[5]
         date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[6]))
         print(f'DHT Valid Data Report:'
               f'Pin: {data[2]} DHT Type: {data[3]} Humidity: {data[4]} Temperature:'
@@ -308,14 +311,14 @@ def the_callback(data):
 
 def get_temp():
     print('1')
-    try:
-        temperature_c = dht(board, 4, the_callback, 11)
-        print(temperature_c)
-        temperature_f = dht(board, 4, the_callback, 11)
+    # try:
+        temperature_c = curr_temp
+        print(curr_temp)
+        temperature_f = curr_temp
         return temperature_c, temperature_f
-    except:
-        print('Temp Sensor failure')
-        return -1, -1
+    # except:
+    #     print('Temp Sensor failure')
+    #     return -1, -1
 
 
 #video = cv2.VideoCapture(0)
