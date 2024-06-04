@@ -285,7 +285,7 @@ def dht(my_board, pin, callback, dht_type):
     # set the pin mode for the DHT device
     my_board.set_pin_mode_dht(pin, callback, dht_type)
 
-curr_temp = 0.0;
+curr_temp = 0.0
 
 def the_callback(data):
     # noinspection GrazieInspection
@@ -312,10 +312,10 @@ def the_callback(data):
 def get_temp():
     print('1')
     # try:
-        temperature_c = curr_temp
-        print(curr_temp)
-        temperature_f = curr_temp
-        return temperature_c, temperature_f
+    temperature_c = curr_temp
+    print(curr_temp)
+    temperature_f = curr_temp
+    return temperature_c, temperature_f
     # except:
     #     print('Temp Sensor failure')
     #     return -1, -1
@@ -336,5 +336,6 @@ setup_touch_sensor()
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
 board = telemetrix.Telemetrix()
+dht(board, 4, the_callback, 11)
 solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()
