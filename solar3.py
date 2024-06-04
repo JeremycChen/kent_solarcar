@@ -7,7 +7,7 @@ import cv2
 from PIL import Image, ImageTk
 import sys
 import time
-from pyfirmata import Arduino, util
+from telemetrix import telemetrix
 
 ##f = open("\Users\\LattePanda\\Music\\sketch_jun03a\\sketch_jun03a.ino")
 #f.truncate()
@@ -270,12 +270,48 @@ def get_touch_sensor(input_pin=27):
     except:
         return
 
+def dht(my_board, pin, callback, dht_type):
+    # noinspection GrazieInspection
+    """
+        Set the pin mode for a DHT 22 device. Results will appear via the
+        callback.
+
+        :param my_board: an telemetrix instance
+        :param pin: Arduino pin number
+        :param callback: The callback function
+        :param dht_type: 22 or 11
+        """
+
+    # set the pin mode for the DHT device
+    my_board.set_pin_mode_dht(pin, callback, dht_type)
+
+def the_callback(data):
+    # noinspection GrazieInspection
+    """
+        The callback function to display the change in distance
+        :param data: [report_type = PrivateConstants.DHT, error = 0, pin number,
+        dht_type, humidity, temperature timestamp]
+                     if this is an error report:
+                     [report_type = PrivateConstants.DHT, error != 0, pin number, dht_type
+                     timestamp]
+        """
+    if data[1]:
+        # error message
+        date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[4]))
+        print(f'DHT Error Report:'
+              f'Pin: {data[2]} DHT Type: {data[3]} Error: {data[1]}  Time: {date}')
+    else:
+        date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[6]))
+        print(f'DHT Valid Data Report:'
+              f'Pin: {data[2]} DHT Type: {data[3]} Humidity: {data[4]} Temperature:'
+              f' {data[5]} Time: {date}')
+
 def get_temp():
     print('1')
     try:
-        temperature_c = dhtDevice.readTemperature()
+        temperature_c = dht(board, 4, the_callback, 11)
         print(temperature_c)
-        temperature_f = dhtDevice.readTemperature(true)
+        temperature_f = dht(board, 4, the_callback, 11)
         return temperature_c, temperature_f
     except:
         print('Temp Sensor failure')
@@ -296,5 +332,6 @@ setup_touch_sensor()
 
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
+board = telemetrix.Telemetrix()
 solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()
