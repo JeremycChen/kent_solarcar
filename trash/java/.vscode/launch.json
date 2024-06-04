@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch SolarCar",
+            "request": "launch",
+            "mainClass": "SolarCar",
+            "vmArgs": "C:/opencv/build/java/x86",
+            "projectName": "SolarCarProject"
+        }
+    ]
+}
