@@ -1,27 +1,40 @@
-from pyfirmata import Arduino, util
+from telemetrix import telemetrix
 import time
+import sys
 
-# Connect to Arduino board
-board = Arduino('COM3')
+curr_temp = 0.0
 
-# Start iterator thread
-it = util.Iterator(board)
-it.start()
 
-# Define pin for DHT11 sensor
-pin = 4
+def dht(my_board, pin, callback, dht_type):
+    print ("...")
 
-# Wait for the board to initialize
-time.sleep(1)
+    my_board.set_pin_mode_dht(pin, callback, dht_type)
+    print ("?%")
 
-while True:
-    # Read data from DHT11 sensor via Arduino
-    temperature = board.analog[0].read()
-    humidity = board.analog[1].read()
 
-    # Print sensor readings
-    print('Temperature: {0:.2f}°C'.format(temperature))
-    print('Humidity: {0:.2f}%'.format(humidity))
 
-    # Wait before taking the next reading
-    time.sleep(2)  # Adjust sleep time if needed
+def the_callback(data):
+    print ("@")
+
+    if data[1]:
+        # error message
+        
+        date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[4]))
+        print(f'DHT Error Report:'
+              f'Pin: {data[2]} DHT Type: {data[3]} Error: {data[1]}  Time: {date}')
+    else:
+        curr_temp = data[5]
+        date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[6]))
+        print(f'DHT Valid Data Report:'
+              f'Pin: {data[2]} DHT Type: {data[3]} Humidity: {data[4]} Temperature:'
+              f' {data[5]} Time: {date}')
+
+
+
+
+
+
+board = telemetrix.Telemetrix('COM3',1)
+print ("?")
+dht(board, 4, the_callback, 11)
+print ("!")
