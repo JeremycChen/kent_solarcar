@@ -335,7 +335,16 @@ setup_touch_sensor()
 
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
-board = telemetrix.Telemetrix()
+
+Connected = false
+
+while not connected:
+    try:
+        board = telemetrix.Telemetrix()
+        conneected = true
+    except:
+        print("Connection failed, retrying")
+
 dht(board, 4, the_callback, 11)
 solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()
