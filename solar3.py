@@ -336,12 +336,12 @@ setup_touch_sensor()
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
 
-Connected = false
+Connected = False
 
-while not connected:
+while not Connected:
     try:
         board = telemetrix.Telemetrix()
-        conneected = true
+        Connected = True
     except:
         print("Connection failed, retrying")
 
