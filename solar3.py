@@ -1,3 +1,4 @@
+import os
 import serial
 from collections.abc import Callable
 from tkinter import *
@@ -9,43 +10,60 @@ import sys
 import time
 from telemetrix import telemetrix
 
-##f = open("\Users\\LattePanda\\Music\\sketch_jun03a\\sketch_jun03a.ino")
-#f.truncate()
+# Touch sensor pin#
+DIGITAL_PIN = 7  # arduino pin number
 
-#arduinoData = serial.Serial('COM3', 9600)
-#serialCom.setDTR(False)
-#time.sleep(1)
-#serialCom.flushInput()
-#serialCom,setDTR(True)
-                            
-#dhtDevice = aruinoData.get_pin('d:4:o')
+#dht sensor pin#
+DHT_PIN = 4
 
-#a = serialCom.decode("utf-8")
-#print(a)
+# Battery Sensor pin#
+ANALOG_PIN = 5
 
+
+# Telemetrix Callback data indices
+CB_PIN_MODE = 0
+CB_PIN = 1
+CB_VALUE = 2
+CB_TIME = 3
+
+# GPS counter range (x0,y0,x1,y1)
+gps_bounds = (33.03467, -97.28418, 33.03458, -97.28470)
 
 class VideoWidget(Frame):
     def __init__(self, parent, video_source=0):
         super().__init__(parent)
         self.video_source = video_source
-        self.video = cv2.VideoCapture(self.video_source)
+        self.video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+        # width = 1024    
+        # height = 600
+        # self.video.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        # self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+
         self.video_label = Label(self)
         self.video_label.pack()
         
-        self.speed_label = Label(self, text="Speed: ", font=('Arial', 45))
+        self.speed_label = Label(self, text="Speed: ", font=('Arial', 40))
         self.speed_label.place(x=20, y=30)
 
-        self.distance_label = Label(self, text="Distance: ", font=('Arial', 45))
+        self.distance_label = Label(self, text="Distance: ", font=('Arial', 30))
         self.distance_label.place(x=20, y=100)
 
-        self.temp_label = Label(self, text="Temperature: ", font=('Arial', 45))
+        self.temp_label = Label(self, text="Temperature: ", font=('Arial', 30))
         self.temp_label.place(x=20, y=170)
 
-        self.time_label = Label(self, text="Time: ", font=('Arial', 45))
+        self.time_label = Label(self, text="Time: ", font=('Arial', 30))
         self.time_label.place(x=20, y=240)
 
-        self.serial_data_label = Label(self, text="", font=('Arial', 45))  # Add a label for serial data
-        self.serial_data_label.place(x=20, y=310)
+        self.battery_label = Label(self, text="Battery: ", font=('Arial', 30))
+        self.battery_label.place(x=20, y=280)
+
+        self.lap_label = Label(self, text="Lap: ", font=('Arial', 30))
+        self.lap_label.place(x=20, y=320)
+
+        self.serial_data_label = Label(self, text="", font=('Arial', 30))  # Add a label for serial data
+        self.serial_data_label.place(x=20, y=360)
         
         #self.next_data_button = Button(self, text="Next Data", font=('Arial', 20), command=self.show_next_data)
         #self.next_data_button.place(x=20, y=380)
@@ -54,18 +72,22 @@ class VideoWidget(Frame):
         self.update()
 
 
+
     def update(self):
         init_time = time.time()
         ret, frame = self.video.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-            frame = cv2.resize(frame, (1024, 600), cv2.INTER_LINEAR)
+            frame = cv2.resize(frame, (1024, 600), cv2.INTER_AREA)
             frame = Image.fromarray(frame)
             photo = ImageTk.PhotoImage(image=frame)
             self.video_label.configure(image=photo)
             self.video_label.image = photo
         #print(time.time() - init_time)
-        self.after(5, self.update)
+
+        # self.solar.update()
+
+        # self.after(5, self.update)
 
     def update_info_labels(self, speed_str, distance_str, temp_str, time_str):
         self.speed_label.config(text=speed_str)
@@ -81,24 +103,24 @@ class VideoWidget(Frame):
 desired_ports = ['V', 'I', 'PPV']
 
 class SolarCar(object):
+
     def __init__(self,
                  get_speed: Callable,
                  get_pos: Callable,
-                 gps_dim: Tuple,
+                 gps_bounds: Tuple,
                  get_touch: Callable,
                  one_cycle_len: float,
                  get_temp: Callable,
                  live_video: Callable,
                  serial_ports: Tuple[str, str],  # Default serial port
                  baud_rate: int = 19200):  # Pass the VideoWidget instance
-        if (gps_dim[0] > gps_dim[2]) or (gps_dim[1] > gps_dim[3]):
+        if (gps_bounds[0] < gps_bounds[2]) or (gps_bounds[1] < gps_bounds[3]):
             print('Wrong GPS boundary')
             sys.exit(1)
         self.root = Tk()
-        self.root.geometry('1920x1080')
+        self.root.geometry('1920x1080') #reverted back to original
         self.root.title('Kent Solar Car')
 
-        #ser = serial.Serial('/dev/ttyUSB1', 19200)
         self.video_widget = VideoWidget(self.root, video_source=0)
         self.setup_serial_communication(serial_ports, baud_rate)
 
@@ -120,7 +142,7 @@ class SolarCar(object):
         self.start_time = time.time()
         self.one_cycle_len = one_cycle_len
         self.get_touch = get_touch
-        self.gps_dim = gps_dim
+        self.gps_dim = gps_bounds
         self.get_speed = get_speed
         self.get_pos = get_pos
         self.get_temp = get_temp
@@ -132,11 +154,12 @@ class SolarCar(object):
         self.time_str = StringVar()
         self.temp_str = StringVar()
 
-        self.update_speed()
-        self.update_distance()
-        self.update_temp()
-        self.update_time()
-        #self.setup_serial_communication(serial_ports, baud_rate)  # Setup serial communication
+        self.gps_prev_t = 0.0
+        self.lap = 0
+        # self.update_speed()
+        # self.update_distance()
+        # self.update_temp()
+        # self.update_time()
 
     def setup_serial_communication(self, serial_ports, baud_rate):
         #self.ser1 = serial.Serial(serial_ports[0], baud_rate)
@@ -181,7 +204,7 @@ class SolarCar(object):
             else:
                 self.combined_data['PPV'] = 'NA'
 
-            self.root.after(200, self.update_serial_data_label)
+            # self.root.after(200, self.update_serial_data_label)
         except:
             print('No COM')
             return
@@ -195,25 +218,46 @@ class SolarCar(object):
                 else:
                     tmp += f'{line_key}: {self.combined_data[line_key]} | '
             self.video_widget.update_serial_data_label(tmp)
-            self.root.after(1000, self.update_serial_data_label_str)
+            # self.root.after(1000, self.update_serial_data_label_str)
         except:
             return
 
     def update_temp(self):
-        try:
-            c, f = self.get_temp()
-            self.temp_str.set(f'Temp: {c:.2f} C | {f:.2f} F')
-            self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
-            self.root.after(1000, self.update_temp)
-        except:
-            return
+        # try:
+        c, f = self.get_temp()
+        self.temp_str.set(f'Temp: {c:.2f} C | {f:.2f} F')
+        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
+        # self.root.after(1000, self.update_temp)
+
+        #this is jank but I'm putting the battery update here as well
+        self.video_widget.battery_label.config(text= "Battery: " + str(curr_battery) + "V")
+
+        # I guess I'm putting GPS here as well
+        #TODO allow the car to park in the starting area without counting
+        #only check every 20 seconds to only count once
+        if time.time() - self.gps_prev_t > 20:
+            #check if we are in the starting area
+            pos = get_pos()
+            try:
+                if gps_bounds[0] < pos[0] < gps_bounds[2] and gps_bounds[1] < pos[1] < gps_bounds[3]:
+                    self.lap += 1
+                    self.gps_prev_t = time.time()
+            except:
+                print("GPS failed")
+        self.video_widget.battery_label.config(text= "Lap: " + str(self.lap) )
+            
+        # except:
+            # return
+
 
     def update_time(self):
         x = time.time() - self.start_time
         x /= 60
         self.time_str.set(f'Time: {x:.2f} min')
         self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
-        self.root.after(500, self.update_time)
+        # self.root.after(500, self.update_time)
+
+        
 
     def update_distance(self):
         x = self.get_touch()
@@ -227,7 +271,7 @@ class SolarCar(object):
             self.touch_sensor_str.set(f'Distance: {(distance / 1.61):.3f} mil ')
         self.distance = self.rot_counter * self.one_cycle_len
         self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
-        self.root.after(1, self.update_distance)
+        # self.root.after(1, self.update_distance)
 
     def update_speed(self):
         # get current time
@@ -241,34 +285,126 @@ class SolarCar(object):
             self.speed_str.set(f'Speed: {current_speed / 1.61:.3f} mph')
         self.previous_distance = self.distance
         self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
-        self.root.after(self.speed_update_interval, self.update_speed)
+        # self.root.after(self.speed_update_interval, self.update_speed)
 
     def start_loop(self):
         self.root.mainloop()
 
+    def update(self):
+        self.update_distance()
+        self.update_speed()
+        self.update_temp()
+        self.update_time()
+
 def get_speed():
     return float(np.random.rand())
 
+GPS = serial.Serial("COM7", 115200)
+
+curr_pos = []
+
+def to_degree(s):
+    degree = s[:2]
+    minuit = s[2:]
+    try:
+        return float(degree) + (float(minuit) / 60)
+    except ValueError:
+        return 0, 0
+
 def get_pos():
-    x_len = gps_dim[2] - gps_dim[0]
-    y_len = gps_dim[3] - gps_dim[1]
-    x_base = gps_dim[0]
-    y_base = gps_dim[1]
-    return float(np.random.rand() * x_len + x_base), float(np.random.rand() * y_len + y_base)
+    # x_len = gps_dim[2] - gps_dim[0]
+    # y_len = gps_dim[3] - gps_dim[1]
+    # x_base = gps_dim[0]
+    # y_base = gps_dim[1]
 
-def setup_touch_sensor(input_pin=27):
+    gps_data = []
+
+    for i in range(6):
+        line = GPS.readline().decode('latin-1').strip().split(',')
+        if line[0] == "$GPRMC":
+            print("GPS data recieved")
+
+            curr_pos = [to_degree(line[4]), to_degree(line[5])]
+            break
+
+    return curr_pos[0], curr_pos[1]
+
+    # return float(np.random.rand() * x_len + x_base), float(np.random.rand() * y_len + y_base)
+
+curr_touch = False
+
+def touch_sensor_callback(data):
+    """
+    A callback function to report data changes.
+    This will print the pin number, its reported value and
+    the date and time when the change occurred
+
+    :param data: [pin, current reported value, pin_mode, timestamp]
+    """
+    date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[CB_TIME]))
+    curr_touch = data[CB_VALUE]
+    print(f'Pin Mode: {data[CB_PIN_MODE]} Pin: {data[CB_PIN]} Value: {data[CB_VALUE]} Time Stamp: {date}')
+
+
+def digital_in(my_board, pin):
+    """
+     This function establishes the pin as a
+     digital input. Any changes on this pin will
+     be reported through the call back function.
+
+     :param my_board: a telemetrix instance
+     :param pin: Arduino pin number
+     """
+
+    # set the pin mode
+    my_board.set_pin_mode_digital_input(pin, touch_sensor_callback)
+    # time.sleep(1)
+    # my_board.disable_all_reporting()
+    # time.sleep(4)
+    # my_board.enable_digital_reporting(12)
+
+    # time.sleep(3)
+    # my_board.enable_digital_reporting(pin)
+    # time.sleep(1)
+
+def get_touch_sensor(input_pin=DIGITAL_PIN):
     try:
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(input_pin, GPIO.IN)
+        return curr_touch
     except:
-        print('No GPIO')
         return
 
-def get_touch_sensor(input_pin=27):
-    try:
-        return GPIO.input(input_pin)
-    except:
-        return
+curr_battery = 0.0
+
+def battery_callback(data):
+    """
+    A callback function to report data changes.
+    This will print the pin number, its reported value and
+    the date and time when the change occurred
+
+    :param data: [pin, current reported value, pin_mode, timestamp]
+    """
+    date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[CB_TIME]))
+    curr_battery = data[CB_VALUE] * 5 # the sensor convert voltage range 0-25 to 0-5, so we have to convert it back
+    print(f'Pin Mode: {data[CB_PIN_MODE]} Pin: {data[CB_PIN]} Value: {data[CB_VALUE]} Time Stamp: {date}')
+
+
+def analog_in(my_board, pin):
+    """
+     This function establishes the pin as an
+     analog input. Any changes on this pin will
+     be reported through the call back function.
+
+     :param my_board: a telemetrix instance
+     :param pin: Arduino pin number
+     """
+
+    # set the pin mode
+    my_board.set_pin_mode_analog_input(pin, differential=5, callback=battery_callback)
+
+    # time.sleep(5)
+    # my_board.disable_analog_reporting()
+    # time.sleep(5)
+    # my_board.enable_analog_reporting()
 
 def dht(my_board, pin, callback, dht_type):
     # noinspection GrazieInspection
@@ -283,11 +419,14 @@ def dht(my_board, pin, callback, dht_type):
         """
 
     # set the pin mode for the DHT device
-    my_board.set_pin_mode_dht(pin, callback, dht_type)
+    try:
+        my_board.set_pin_mode_dht(pin, callback, dht_type)
+    except:
+        pass
 
 curr_temp = 0.0
 
-def the_callback(data):
+def dht_callback(data):
     # noinspection GrazieInspection
     """
         The callback function to display the change in distance
@@ -310,41 +449,61 @@ def the_callback(data):
               f' {data[5]} Time: {date}')
 
 def get_temp():
-    print('1')
-    # try:
-    temperature_c = curr_temp
-    print(curr_temp)
-    temperature_f = curr_temp
-    return temperature_c, temperature_f
-    # except:
-    #     print('Temp Sensor failure')
-    #     return -1, -1
+    # print('1')
+    try:
+        temperature_c = curr_temp
+        # print(curr_temp)
+        temperature_f = 9/5 * curr_temp + 32 #converting C to F
+        return temperature_c, temperature_f
+    except:
+        print('Temp Sensor failure')
+        return -1, -1
 
 
 #video = cv2.VideoCapture(0)
 def live_video():
-    ret, image = video.read()
+    ret, image = solar.video.read()
     if not ret:
-        print('failed')
+        print('video_failed')
     else:
         return image
 
-
-gps_dim = (41.72454112609995, -73.4811918422402, 41.72635922342008, -73.47515215049468)
-setup_touch_sensor()
+#video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget.py
 
 
-#video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
+Connected = False
 
-Connected = false
-
-while not connected:
+#connect telemetrix
+while not Connected:
     try:
-        board = telemetrix.Telemetrix()
-        conneected = true
+        board = telemetrix.Telemetrix("COM3", 1)
+        Connected = True
+
+    # except RuntimeError:
+        # exit(0)
+
     except:
+        os.execv(sys.argv[0], sys.argv)
+        exit(0)
         print("Connection failed, retrying")
 
-dht(board, 4, the_callback, 11)
-solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
-solar.start_loop()
+#wait for dht to go online
+# time.sleep(1)
+
+#setup telemetrix inputs
+dht(board, DHT_PIN, dht_callback, 11)
+digital_in(board, DIGITAL_PIN)    
+analog_in(board, ANALOG_PIN)
+
+solar = SolarCar(get_speed, get_pos, gps_bounds, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
+
+# solar.start_loop()
+
+while True:
+    #this has the same effect as start_loop()
+    solar.root.update_idletasks() 
+    solar.root.update()
+
+    #our code
+    solar.update()
+    solar.video_widget.update()
