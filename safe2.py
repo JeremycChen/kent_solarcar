@@ -71,8 +71,8 @@ class PowerThread(QThread):
 
     def run(self):
         try:
-            self.power1 = serial.Serial(self.port1, 9600)
-            self.power2 = serial.Serial(self.port2, 9600)
+            self.power1 = serial.Serial(self.port1, 19200)
+            self.power2 = serial.Serial(self.port2, 19200)
             while True:
                 voltage1 = int(self.power1.readline().decode().strip())
                 voltage2 = int(self.power2.readline().decode().strip())

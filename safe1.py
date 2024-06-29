@@ -37,7 +37,7 @@ def digital_in(my_board, pin):
 
 def battery_callback(data):
     global curr_battery
-    curr_battery = data[CB_VALUE] * 5  # Convert voltage range 0-25 to 0-5
+    curr_battery = data[CB_VALUE] * 5 / 2 * 0.01  # Convert voltage range 0-25 to 0-5
 
 def analog_in(my_board, pin):
     my_board.set_pin_mode_analog_input(pin, differential=5, callback=battery_callback)
