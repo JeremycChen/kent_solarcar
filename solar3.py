@@ -507,3 +507,10 @@ while True:
     #our code
     solar.update()
     solar.video_widget.update()
+
+#TODO Speedometer reading
+#TODO voltage
+#TODO read V, I, PPV in com4 and com10. display I and PPV as their sum
+#TODO lap-counter and velocity based on gps
+#TODO latitude aabb.bbbb, latitude = aa + bb.bbbb/60; longitude: aaabb.bbbb longitude = aaa + bb.bbbb/60
+#TODO Rewrite GUI using pyqt5
