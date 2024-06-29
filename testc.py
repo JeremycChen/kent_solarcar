@@ -9,20 +9,21 @@ import sys
 import time
 from telemetrix import telemetrix
 
-##f = open("\Users\\LattePanda\\Music\\sketch_jun03a\\sketch_jun03a.ino")
-#f.truncate()
+# Touch sensor pin#
+DIGITAL_PIN = 27  # arduino pin number
 
-#arduinoData = serial.Serial('COM3', 9600)
-#serialCom.setDTR(False)
-#time.sleep(1)
-#serialCom.flushInput()
-#serialCom,setDTR(True)
-                            
-#dhtDevice = aruinoData.get_pin('d:4:o')
+#dht sensor pin#
+DHT_PIN = 4
 
-#a = serialCom.decode("utf-8")
-#print(a)
+# Battery Sensor pin#
+ANALOG_PIN = 5
 
+
+# Telemetrix Callback data indices
+CB_PIN_MODE = 0
+CB_PIN = 1
+CB_VALUE = 2
+CB_TIME = 3
 
 class VideoWidget(Frame):
     def __init__(self, parent, video_source=0):
@@ -32,24 +33,27 @@ class VideoWidget(Frame):
         self.video_label = Label(self)
         self.video_label.pack()
         
-        self.speed_label = Label(self, text="Speed: ", font=('Arial', 45))
+        self.speed_label = Label(self, text="Speed: ", font=('Arial', 40))
         self.speed_label.place(x=20, y=30)
 
-        self.distance_label = Label(self, text="Distance: ", font=('Arial', 45))
+        self.distance_label = Label(self, text="Distance: ", font=('Arial', 40))
         self.distance_label.place(x=20, y=100)
 
-        self.temp_label = Label(self, text="Temperature: ", font=('Arial', 45))
+        self.temp_label = Label(self, text="Temperature: ", font=('Arial', 40))
         self.temp_label.place(x=20, y=170)
 
-        self.time_label = Label(self, text="Time: ", font=('Arial', 45))
+        self.time_label = Label(self, text="Time: ", font=('Arial', 40))
         self.time_label.place(x=20, y=240)
 
-        self.serial_data_label = Label(self, text="", font=('Arial', 45))  # Add a label for serial data
-        self.serial_data_label.place(x=20, y=310)
-        
-        #self.next_data_button = Button(self, text="Next Data", font=('Arial', 20), command=self.show_next_data)
-        #self.next_data_button.place(x=20, y=380)
+        self.battery_label = Label(self, text="Battery: ", font=('Arial', 40))
+        self.battery_label.place(x=20, y=280)
 
+        self.humidity_label = Label(self, text="Humidity: ", font=('Arial', 40))
+        self.humidity_label.place(x=20, y=320)
+
+        self.serial_data_label = Label(self, text="", font=('Arial', 30))  # Add a label for serial data
+        self.serial_data_label.place(x=20, y=350)
+        
         self.pack()
         self.update()
 
@@ -67,11 +71,13 @@ class VideoWidget(Frame):
         #print(time.time() - init_time)
         self.after(5, self.update)
 
-    def update_info_labels(self, speed_str, distance_str, temp_str, time_str):
+    def update_info_labels(self, speed_str, distance_str, temp_str, time_str, battery_str, humidity_str):
         self.speed_label.config(text=speed_str)
         self.distance_label.config(text=distance_str)
         self.temp_label.config(text=temp_str)
         self.time_label.config(text=time_str)
+        self.battery_label.config(text=battery_str)
+        self.humidity_label.config(text=humidity_str)
 
     def update_serial_data_label(self, serial_data):
         self.serial_data_label.config(text=serial_data)  # Update serial data label
@@ -131,12 +137,13 @@ class SolarCar(object):
         self.touch_sensor_str = StringVar()
         self.time_str = StringVar()
         self.temp_str = StringVar()
+        self.battery_str = StringVar()
+        self.humidity_str = StringVar()
 
         self.update_speed()
         self.update_distance()
         self.update_temp()
         self.update_time()
-        #self.setup_serial_communication(serial_ports, baud_rate)  # Setup serial communication
 
     def setup_serial_communication(self, serial_ports, baud_rate):
         #self.ser1 = serial.Serial(serial_ports[0], baud_rate)
@@ -203,16 +210,22 @@ class SolarCar(object):
         try:
             c, f = self.get_temp()
             self.temp_str.set(f'Temp: {c:.2f} C | {f:.2f} F')
-            self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
+            self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get(), self.battery_str.get(), self.humidity_str.get())  # Update VideoWidget
             self.root.after(1000, self.update_temp)
+
+            #this is jank but I'm putting the battery update here as well
+            self.video_widget.battery_label.config(text= "Battery: " + self.battery_str.get() + "V")
+            self.video_widget.humidity_label.config(text= "Humidity: " + self.humidity_str.get() + "%")
+            
         except:
             return
+
 
     def update_time(self):
         x = time.time() - self.start_time
         x /= 60
         self.time_str.set(f'Time: {x:.2f} min')
-        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
+        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get(), self.battery_str.get(), self.humidity_str.get())  # Update VideoWidget
         self.root.after(500, self.update_time)
 
     def update_distance(self):
@@ -226,7 +239,7 @@ class SolarCar(object):
         else:
             self.touch_sensor_str.set(f'Distance: {(distance / 1.61):.3f} mil ')
         self.distance = self.rot_counter * self.one_cycle_len
-        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
+        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get(), self.battery_str.get(), self.humidity_str.get())  # Update VideoWidget
         self.root.after(1, self.update_distance)
 
     def update_speed(self):
@@ -240,7 +253,7 @@ class SolarCar(object):
         else:
             self.speed_str.set(f'Speed: {current_speed / 1.61:.3f} mph')
         self.previous_distance = self.distance
-        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get())  # Update VideoWidget
+        self.video_widget.update_info_labels(self.speed_str.get(), self.touch_sensor_str.get(), self.temp_str.get(), self.time_str.get(), self.battery_str.get(), self.humidity_str.get())  # Update VideoWidget
         self.root.after(self.speed_update_interval, self.update_speed)
 
     def start_loop(self):
@@ -256,19 +269,80 @@ def get_pos():
     y_base = gps_dim[1]
     return float(np.random.rand() * x_len + x_base), float(np.random.rand() * y_len + y_base)
 
-def setup_touch_sensor(input_pin=27):
+curr_touch = False
+
+def touch_sensor_callback(data):
+    """
+    A callback function to report data changes.
+    This will print the pin number, its reported value and
+    the date and time when the change occurred
+
+    :param data: [pin, current reported value, pin_mode, timestamp]
+    """
+    date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[CB_TIME]))
+    curr_touch = data[CB_VALUE]
+    print(f'Pin Mode: {data[CB_PIN_MODE]} Pin: {data[CB_PIN]} Value: {data[CB_VALUE]} Time Stamp: {date}')
+
+
+def digital_in(my_board, pin):
+    """
+     This function establishes the pin as a
+     digital input. Any changes on this pin will
+     be reported through the call back function.
+
+     :param my_board: a telemetrix instance
+     :param pin: Arduino pin number
+     """
+
+    # set the pin mode
+    my_board.set_pin_mode_digital_input(pin, touch_sensor_callback)
+    # time.sleep(1)
+    # my_board.disable_all_reporting()
+    # time.sleep(4)
+    # my_board.enable_digital_reporting(12)
+
+    # time.sleep(3)
+    # my_board.enable_digital_reporting(pin)
+    # time.sleep(1)
+
+def get_touch_sensor(input_pin=DIGITAL_PIN):
     try:
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(input_pin, GPIO.IN)
+        return curr_touch
     except:
-        print('No GPIO')
         return
 
-def get_touch_sensor(input_pin=27):
-    try:
-        return GPIO.input(input_pin)
-    except:
-        return
+curr_battery = 0.0
+
+def battery_callback(data):
+    """
+    A callback function to report data changes.
+    This will print the pin number, its reported value and
+    the date and time when the change occurred
+
+    :param data: [pin, current reported value, pin_mode, timestamp]
+    """
+    date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[CB_TIME]))
+    curr_battery = data[CB_VALUE] * 5 # the sensor convert voltage range 0-25 to 0-5, so we have to convert it back
+    print(f'Pin Mode: {data[CB_PIN_MODE]} Pin: {data[CB_PIN]} Value: {data[CB_VALUE]} Time Stamp: {date}')
+
+
+def analog_in(my_board, pin):
+    """
+     This function establishes the pin as an
+     analog input. Any changes on this pin will
+     be reported through the call back function.
+
+     :param my_board: a telemetrix instance
+     :param pin: Arduino pin number
+     """
+
+    # set the pin mode
+    my_board.set_pin_mode_analog_input(pin, differential=5, callback=battery_callback)
+
+    # time.sleep(5)
+    # my_board.disable_analog_reporting()
+    # time.sleep(5)
+    # my_board.enable_analog_reporting()
 
 def dht(my_board, pin, callback, dht_type):
     # noinspection GrazieInspection
@@ -283,11 +357,14 @@ def dht(my_board, pin, callback, dht_type):
         """
 
     # set the pin mode for the DHT device
-    my_board.set_pin_mode_dht(pin, callback, dht_type)
+    try:
+        my_board.set_pin_mode_dht(pin, callback, dht_type)
+    except:
+        pass
 
 curr_temp = 0.0
 
-def the_callback(data):
+def dht_callback(data):
     # noinspection GrazieInspection
     """
         The callback function to display the change in distance
@@ -310,32 +387,44 @@ def the_callback(data):
               f' {data[5]} Time: {date}')
 
 def get_temp():
-    print('1')
-    # try:
-    temperature_c = curr_temp
-    print(curr_temp)
-    temperature_f = curr_temp
-    return temperature_c, temperature_f
-    # except:
-    #     print('Temp Sensor failure')
-    #     return -1, -1
+    # print('1')
+    try:
+        temperature_c = curr_temp
+        # print(curr_temp)
+        temperature_f = 9/5 * curr_temp + 32 #converting C to F
+        return temperature_c, temperature_f
+    except:
+        print('Temp Sensor failure')
+        return -1, -1
 
 
 #video = cv2.VideoCapture(0)
 def live_video():
     ret, image = video.read()
     if not ret:
-        print('failed')
+        print('video_failed')
     else:
         return image
 
 
 gps_dim = (41.72454112609995, -73.4811918422402, 41.72635922342008, -73.47515215049468)
-setup_touch_sensor()
-
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
-board = telemetrix.Telemetrix('COM3')
-dht(board, 4, the_callback, 11)
+
+Connected = False
+
+#connect telemetrix
+while not Connected:
+    try:
+        board = telemetrix.Telemetrix("COM3")
+        Connected = True
+    except:
+        print("Connection failed, retrying")
+
+#setup telemetrix inputs
+dht(board, DHT_PIN, dht_callback, 11)
+digital_in(board, DIGITAL_PIN)    
+analog_in(board, ANALOG_PIN)
+
 solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()
