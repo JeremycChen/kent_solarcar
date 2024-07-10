@@ -373,7 +373,7 @@ def get_touch_sensor(input_pin=DIGITAL_PIN):
     except:
         return
 
-curr_battery = 0.0
+global curr_battery
 
 def battery_callback(data):
     """
