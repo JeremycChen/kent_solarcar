@@ -1,0 +1,8 @@
+pandas
+pyserial
+PyQt5
+numpy
+telemetrix
+nmea-parser
+folium
+pynmeagps
