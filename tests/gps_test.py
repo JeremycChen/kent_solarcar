@@ -1,7 +1,7 @@
 from serial import Serial
 from pynmeagps import NMEAReader
 
-with Serial('COM7', 115200, timeout=3) as stream:
+with Serial('COM3', 115200, timeout=3) as stream:
     try:
         nmr = NMEAReader(stream)
         while True:
