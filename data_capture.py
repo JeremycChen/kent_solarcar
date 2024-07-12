@@ -160,7 +160,10 @@ class DataCapture:
     def update_gps(self):
         raw_data, parsed_data = self.gps_reader.read()
         if parsed_data is not None:
-            self.data["gps"] = [parsed_data.lat, parsed_data.long]
+            try:
+                self.data["gps"] = [parsed_data.lat, parsed_data.long]
+            except Exception as e:
+                print(f"Failed to update gps data: {e}")
 
 
     def encoder_callback(self, data):
