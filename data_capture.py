@@ -116,7 +116,7 @@ class DataCapture:
         connected = False
         while not connected:
             try:
-                self.board = telemetrix.Telemetrix("COM3", 1)
+                self.board = telemetrix.Telemetrix("COM3", 1, shutdown_on_exception=False)
                 connected = True
                 print("Successfully connected to Telemetrix.")
             except Exception as e:
