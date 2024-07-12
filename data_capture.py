@@ -220,7 +220,7 @@ class DataCapture:
                 f'Pin: {data[2]} DHT Type: {data[3]} Humidity: {data[4]} Temperature:'
                 f' {data[5]} Time: {date}')
             
-    def dht_setup(my_board, pin, callback, dht_type):
+    def dht_setup(self, my_board, pin, callback, dht_type):
         """
         Set the pin mode for a DHT 22 device. Results will appear via the
         callback.
