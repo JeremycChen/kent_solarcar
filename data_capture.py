@@ -25,9 +25,6 @@ CB_TIME = 3
 # GPS counter range ((x0,y0),(x1,y1))
 GPS_BOUNDS = ((33.03467, -97.28418), (33.03458, -97.28470))
 
-# solar panel data keys
-desired_ports = ['V', 'I', 'PPV']
-
 class DataCapture:
     def __init__(self):
         self.start_time = time.time()
@@ -47,11 +44,15 @@ class DataCapture:
             "lap": 0,
             'V': 0,
             'I': 0,
+            "I_1": 0,
+            "I_2": 0,
+            "PPV_1": 0,
+            "PPV_2": 0,
             'PPV': 0,
             "gps": [0,0],
             "gps_bounds": GPS_BOUNDS
         }
- 
+
         self.prev_data = self.data
 
         self.board = None
@@ -84,7 +85,6 @@ class DataCapture:
     
     def update_time(self):
         t = time.time() - self.start_time
-        t /= 60
         self.prev_data["time"] = self.data["time"]
         self.data["time"] = t
         return
@@ -143,14 +143,28 @@ class DataCapture:
         data1 = self.read_serial_data(self.solar_panel_1_serial)
         data2 = self.read_serial_data(self.solar_panel_2_serial)
 
+        print(data1)
+        print(data2)
+
         # Combine the data
         try:
-            self.data['V'] = float(data1['V'])  # V should be the same for both panels
-            if data1['I'] != 'NA' and data2['I'] != 'NA':
-                self.data['I'] = float(data1['I']) + float(self.data2['I'])
+            if "V" in data1:
+                self.data['V'] = float(data1['V'])  # V should be the same for both panels
+            if "V" in data2:
+                self.data['V'] = float(data2['V'])  # V should be the same for both panels
 
-            if data1['PPV'] != 'NA' and data2['PPV'] != 'NA':
-                self.data['PPV'] = float(data1['PPV']) + float(data2['PPV'])
+            if "I" in data1:
+                self.data['I_1'] = float(data1['I'])
+            if "I" in data2:
+                self.data['I_2'] = float(data2['I'])
+            self.data["I"] = self.data["I_1"] + self.data["I_2"]
+
+            if "PPV" in data1:
+                self.data['PPV_1'] = float(data1['PPV'])
+            if "PPV" in data2:
+                self.data['PPV_2'] = float(data2['PPV'])
+            self.data['PPV'] = self.data['PPV_1'] + self.data['PPV_2']
+
         except Exception as e:
             print(f"Failed to update solar panel data: {e}")
 

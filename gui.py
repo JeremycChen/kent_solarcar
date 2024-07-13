@@ -7,6 +7,7 @@ import folium
 import cv2
 import data_capture
 import atexit
+import datetime
 
 DISABLE_DATA_CAPTURE = False
 DISABLE_CAMERA = False
@@ -87,7 +88,7 @@ class Dashboard(QWidget):
         # Update time every second
         self.data_timer = QTimer(self)
         self.data_timer.timeout.connect(self.update_data)
-        self.data_timer.start(2000)  # Update every 20 milliseconds
+        self.data_timer.start(1000)  # Update every 20 milliseconds
 
         self.camera_timer = QTimer(self)
         self.camera_timer.timeout.connect(self.display_camera_streams)
@@ -125,10 +126,11 @@ class Dashboard(QWidget):
         if DISABLE_DATA_CAPTURE: return
         data = self.data_capture.get_data()
         print(data)
+        print(str(datetime.timedelta(seconds=data['time']))[:7])
         self.speedLabel.setText('Speed: ' + str(round(data['speed'],3)) + 'km/h')
         self.distanceLabel.setText('Distance: ' + str(round(data['distance'],3)) + ' km')
         self.temperatureLabel.setText('Temperature: ' + str(round(data['temperature'],3)) + '°C')
-        self.timeLabel.setText('Time: ' + str(round(data['time'],3)) + "s")
+        self.timeLabel.setText('Time: ' + str(datetime.timedelta(seconds=data['time']))[:7])
         self.batteryLabel.setText('Battery: ' + str(round(data['battery'],3)) + 'V')
         self.lapCountLabel.setText('Lap Count: ' + str(round(data['lap'],3)))
         self.currentLabel.setText('Current (I): ' + str(round(data['I'],3)) + 'A')
