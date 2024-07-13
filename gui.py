@@ -6,18 +6,32 @@ from PyQt5 import QtWebEngineWidgets
 import folium
 import cv2
 import data_capture
+import atexit
 
-DISABLE_DATA_CAPTURE = True
-DISABLE_CAMERA = True
+DISABLE_DATA_CAPTURE = False
+DISABLE_CAMERA = False
 
 class Dashboard(QWidget):
     def __init__(self):
         super().__init__()
+        if not DISABLE_DATA_CAPTURE:
+            self.data_capture = data_capture.DataCapture()
+        atexit.register(self.exit_handler)
         self.initUI()
+
+    def exit_handler(self):
+        # self.front_video.release()
+        self.back_video.release()
+        cv2.destroyAllWindows()
+
+        app.exec_()
+        
+        # self.data_capture.board.shutdown()
+        print ('Exit sucessful')
 
     def initUI(self):
         # Set window size and title
-        self.setGeometry(0, 0, 1920, 540)
+        self.setGeometry(0, 0, 1024, 200)
         self.setWindowTitle('Dashboard')
 
         # Create layout
@@ -40,10 +54,12 @@ class Dashboard(QWidget):
         self.lapCountLabel = QLabel('Lap Count: 0')
         self.currentLabel = QLabel('Current (I): 0A')
         self.PPVoltageLabel = QLabel('PPV: 0V')
+        self.VoltageLabel = QLabel('V: 0V')
+
 
         # Set font size for labels
-        font = QFont('Arial', 40)
-        large_font = QFont('Arial', 60)
+        font = QFont('Arial', 10)
+        large_font = QFont('Arial', 40)
         self.speedLabel.setFont(large_font)
         self.distanceLabel.setFont(font)
         self.temperatureLabel.setFont(font)
@@ -52,6 +68,7 @@ class Dashboard(QWidget):
         self.lapCountLabel.setFont(font)
         self.currentLabel.setFont(font)
         self.PPVoltageLabel.setFont(font)
+        self.VoltageLabel.setFont(font)
 
         # Add labels to layout
         left.addWidget(self.speedLabel, 0, 0)
@@ -59,72 +76,85 @@ class Dashboard(QWidget):
         left.addWidget(self.timeLabel, 2, 0)
         left.addWidget(self.lapCountLabel, 3, 0)
 
-        left.addWidget(self.batteryLabel, 1, 1)
-        left.addWidget(self.temperatureLabel, 2, 1)
-        left.addWidget(self.currentLabel, 3, 1)
-        left.addWidget(self.PPVoltageLabel, 4, 1)
+        # left.addWidget(self.batteryLabel, 1, 1)
+        # left.addWidget(self.temperatureLabel, 2, 1)
+        left.addWidget(self.currentLabel, 1, 1)
+        left.addWidget(self.PPVoltageLabel, 2, 1)
+        left.addWidget(self.VoltageLabel, 3, 1)
+
+        print("GUI setup good.")
 
         # Update time every second
         self.data_timer = QTimer(self)
         self.data_timer.timeout.connect(self.update_data)
-        self.data_timer.start(20)  # Update every 20 milliseconds
+        self.data_timer.start(2000)  # Update every 20 milliseconds
 
         self.camera_timer = QTimer(self)
         self.camera_timer.timeout.connect(self.display_camera_streams)
         self.camera_timer.start(30) # about 30 fps
 
-        self.front_video = None
+        # self.front_video = None
         self.back_video = None
 
         if not DISABLE_CAMERA : self.camera_setup()
 
-        if not DISABLE_DATA_CAPTURE:
-            self.data_capture = data_capture.DataCapture()
-
     def camera_setup(self):
-        self.front_video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        self.back_video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+        # self.front_video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+        self.back_video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     def display_camera_streams(self):
 
         if DISABLE_CAMERA: return
 
-        ret1, frame1 = self.front_video.read()
+        # ret1, frame1 = self.front_video.read()
         ret2, frame2 = self.back_video.read()
 
-        if not ret1 or not ret2:
-            print("Failed to capture video frames")
-            return
+        # if not ret1 or not ret2:
+        #     print("Failed to capture video frames")
+        #     return
 
-        cv2.imshow("Front Camera", frame1)
+        # cv2.imshow("Front Camera", frame1)
         cv2.imshow("Back Camera", frame2)
 
         if cv2.waitKey(1) == ord('q'):
-            self.front_video.release()
+            # self.front_video.release()
             self.back_video.release()
             cv2.destroyAllWindows()
 
     def update_data(self):
         if DISABLE_DATA_CAPTURE: return
         data = self.data_capture.get_data()
-        self.speedLabel.setText('Speed: ' + str(data['speed']) + ' km/h')
-        self.distanceLabel.setText('Distance: ' + str(data['distance']) + ' km')
-        self.temperatureLabel.setText('Temperature: ' + str(data['temperature']) + '°C')
-        self.timeLabel.setText('Time: ' + str(data['time']))
-        self.batteryLabel.setText('Battery: ' + str(data['battery']) + 'V')
-        self.lapCountLabel.setText('Lap Count: ' + str(data['lap']))
-        self.currentLabel.setText('Current (I): ' + str(data['I']) + 'A')
-        self.PPVoltageLabel.setText('PPV: ' + str(data['PPV']) + 'V')
+        print(data)
+        self.speedLabel.setText('Speed: ' + str(round(data['speed'],3)) + 'km/h')
+        self.distanceLabel.setText('Distance: ' + str(round(data['distance'],3)) + ' km')
+        self.temperatureLabel.setText('Temperature: ' + str(round(data['temperature'],3)) + '°C')
+        self.timeLabel.setText('Time: ' + str(round(data['time'],3)) + "s")
+        self.batteryLabel.setText('Battery: ' + str(round(data['battery'],3)) + 'V')
+        self.lapCountLabel.setText('Lap Count: ' + str(round(data['lap'],3)))
+        self.currentLabel.setText('Current (I): ' + str(round(data['I'],3)) + 'A')
+        self.PPVoltageLabel.setText('PPV: ' + str(round(data['PPV'],3)) + 'V')
+        self.VoltageLabel.setText('V: ' + str(round(data['V'],3)) + 'V')
         self.map = folium.Map(location=data["gps"], zoom_start=15)
+        folium.Marker(location=data["gps"], popup="Kent Solar Car").add_to(self.map)
+        folium.Rectangle(
+            bounds=data["gps_bounds"],
+            line_join="bevel",
+            dash_array="15, 10, 5, 10, 15",
+            color="blue",
+            line_cap= "round",
+            fill= True,
+            fill_color="red",
+            weight=5,
+            popup="Finish Line",
+            tooltip= "<strong>Finish Line</strong>",
+        ).add_to(self.map)
 
-
+        self.map_widget.setHtml(self.map.get_root().render())
 
 if __name__ == '__main__':
     import sys
     app = QApplication(sys.argv)
     dashboard = Dashboard()
     dashboard.show()
-
-
 
     sys.exit(app.exec_())
