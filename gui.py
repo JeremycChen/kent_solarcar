@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QHBoxLayout 
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout 
 from PyQt5.QtCore import QTimer, QDateTime
 from PyQt5.QtGui import QFont
 from PyQt5 import QtWebEngineWidgets
@@ -24,8 +24,6 @@ class Dashboard(QWidget):
         # self.front_video.release()
         self.back_video.release()
         cv2.destroyAllWindows()
-
-        app.exec_()
         
         # self.data_capture.board.shutdown()
         print ('Exit sucessful')
@@ -37,7 +35,8 @@ class Dashboard(QWidget):
 
         # Create layout
         canvas = QHBoxLayout()
-        left = QGridLayout()
+        left = QVBoxLayout()
+        data_table_layout = QGridLayout()
         canvas.addLayout(left)
         self.setLayout(canvas)
 
@@ -47,48 +46,59 @@ class Dashboard(QWidget):
         canvas.addWidget(self.map_widget)
 
         # Define labels
-        self.speedLabel = QLabel('Speed: 0 km/h')
-        self.distanceLabel = QLabel('Distance: 0 km')
-        self.temperatureLabel = QLabel('Temperature: 0°C')
-        self.timeLabel = QLabel('Time: 0')
-        self.batteryLabel = QLabel('Battery: 0V')
-        self.lapCountLabel = QLabel('Lap Count: 0')
-        self.currentLabel = QLabel('Current (I): 0A')
-        self.PPVoltageLabel = QLabel('PPV: 0V')
-        self.VoltageLabel = QLabel('V: 0V')
+        self.speed_label = QLabel('Speed: 0 km/h | 0 mph')
+        self.distance_label = QLabel('Distance: 0 km')
+        self.time_label = QLabel('Time: 0')
+        self.lap_count_label = QLabel('Lap Count: 0')
+
+        self.battery_voltage_label = QLabel('Battery V: 0mV')
+        self.battery_current_label = QLabel('Battery I: 0mV')
+        self.temperature_label = QLabel('Temperature: 0°C')
+
+        self.panel_current_label = QLabel('Panel I: 0mA')
+        self.panel_ppv_label = QLabel('Panel PPV: 0W')
+        self.panel_voltage_label = QLabel('Panel V: 0mV')
 
 
         # Set font size for labels
-        font = QFont('Arial', 10)
+        font = QFont('Arial', 15)
         large_font = QFont('Arial', 40)
-        self.speedLabel.setFont(large_font)
-        self.distanceLabel.setFont(font)
-        self.temperatureLabel.setFont(font)
-        self.timeLabel.setFont(font)
-        self.batteryLabel.setFont(font)
-        self.lapCountLabel.setFont(font)
-        self.currentLabel.setFont(font)
-        self.PPVoltageLabel.setFont(font)
-        self.VoltageLabel.setFont(font)
+
+        self.speed_label.setFont(large_font)
+        self.distance_label.setFont(font)
+        self.time_label.setFont(font)
+        self.lap_count_label.setFont(font)
+
+        self.battery_voltage_label.setFont(font)
+        self.battery_current_label.setFont(font)
+        self.temperature_label.setFont(font)
+
+        self.panel_current_label.setFont(font)
+        self.panel_ppv_label.setFont(font)
+        self.panel_voltage_label.setFont(font)
 
         # Add labels to layout
-        left.addWidget(self.speedLabel, 0, 0)
-        left.addWidget(self.distanceLabel, 1, 0)
-        left.addWidget(self.timeLabel, 2, 0)
-        left.addWidget(self.lapCountLabel, 3, 0)
+        left.addWidget(self.speed_label)
+        left.addLayout(data_table_layout)
 
-        # left.addWidget(self.batteryLabel, 1, 1)
-        # left.addWidget(self.temperatureLabel, 2, 1)
-        left.addWidget(self.currentLabel, 1, 1)
-        left.addWidget(self.PPVoltageLabel, 2, 1)
-        left.addWidget(self.VoltageLabel, 3, 1)
+        data_table_layout.addWidget(self.distance_label, 1, 0)
+        data_table_layout.addWidget(self.time_label, 2, 0)
+        data_table_layout.addWidget(self.lap_count_label, 3, 0)
+
+        data_table_layout.addWidget(self.battery_voltage_label, 1, 1)
+        data_table_layout.addWidget(self.battery_current_label, 2, 1)
+        data_table_layout.addWidget(self.temperature_label, 3, 1)
+
+        data_table_layout.addWidget(self.panel_current_label, 1, 2)
+        data_table_layout.addWidget(self.panel_ppv_label, 2, 2)
+        data_table_layout.addWidget(self.panel_voltage_label, 3, 2)
 
         print("GUI setup good.")
 
         # Update time every second
         self.data_timer = QTimer(self)
         self.data_timer.timeout.connect(self.update_data)
-        self.data_timer.start(1000)  # Update every 20 milliseconds
+        self.data_timer.start(1000)  # Update every 100 milliseconds
 
         self.camera_timer = QTimer(self)
         self.camera_timer.timeout.connect(self.display_camera_streams)
@@ -102,6 +112,8 @@ class Dashboard(QWidget):
     def camera_setup(self):
         # self.front_video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
         self.back_video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.back_video.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
+        self.back_video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     def display_camera_streams(self):
 
@@ -126,16 +138,20 @@ class Dashboard(QWidget):
         if DISABLE_DATA_CAPTURE: return
         data = self.data_capture.get_data()
         print(data)
-        print(str(datetime.timedelta(seconds=data['time']))[:7])
-        self.speedLabel.setText('Speed: ' + str(round(data['speed'],3)) + 'km/h')
-        self.distanceLabel.setText('Distance: ' + str(round(data['distance'],3)) + ' km')
-        self.temperatureLabel.setText('Temperature: ' + str(round(data['temperature'],3)) + '°C')
-        self.timeLabel.setText('Time: ' + str(datetime.timedelta(seconds=data['time']))[:7])
-        self.batteryLabel.setText('Battery: ' + str(round(data['battery'],3)) + 'V')
-        self.lapCountLabel.setText('Lap Count: ' + str(round(data['lap'],3)))
-        self.currentLabel.setText('Current (I): ' + str(round(data['I'],3)) + 'A')
-        self.PPVoltageLabel.setText('PPV: ' + str(round(data['PPV'],3)) + 'V')
-        self.VoltageLabel.setText('V: ' + str(round(data['V'],3)) + 'V')
+        # print(str(datetime.timedelta(seconds=data['time']))[:7])
+        self.speed_label.setText('Speed: ' + str(round(data['speed'] * 0.621371,3)) + "mph")
+        self.distance_label.setText('Distance: ' + str(round(data['distance'],3)) + ' km')
+        self.temperature_label.setText('Temperature: ' + str(round(data['temperature'],3)) + '°C')
+        self.time_label.setText('Time: ' + str(datetime.timedelta(seconds=data['time']))[:7])
+
+        self.battery_voltage_label.setText('Battery V: ' + str(round(data['battery'],3)) + 'V')
+        self.battery_current_label.setText('Battery I: ' + str(round(data['battery_I'],3)) + 'A')
+
+        self.lap_count_label.setText('Lap Count: ' + str(round(data['lap'],3)))
+        self.panel_current_label.setText('Panel I: ' + str(round(data['I'],3)) + 'mA')
+        self.panel_ppv_label.setText('Panel PPV: ' + str(round(data['PPV'],3)) + 'W')
+        self.panel_voltage_label.setText('Panel V: ' + str(round(data['V'],3)) + 'mV')
+
         self.map = folium.Map(location=data["gps"], zoom_start=15)
         folium.Marker(location=data["gps"], popup="Kent Solar Car").add_to(self.map)
         folium.Rectangle(

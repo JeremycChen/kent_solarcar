@@ -3,6 +3,7 @@ import serial
 import time
 # from telemetrix import telemetrix
 from pynmeagps import NMEAReader
+import re
 
 #physical constants
 WHEEL_DIAMETER = 2.153412 #meters
@@ -23,7 +24,7 @@ CB_VALUE = 2
 CB_TIME = 3
 
 # GPS counter range ((x0,y0),(x1,y1))
-GPS_BOUNDS = ((33.03467, -97.28418), (33.03458, -97.28470))
+GPS_BOUNDS = ((33.03467, -97.28418), (33.03450, -97.28480)) #((33.03467, -97.28418), (33.03458, -97.28470))
 
 class DataCapture:
     def __init__(self):
@@ -37,10 +38,11 @@ class DataCapture:
         #data that will be displayed
         self.data = {
             "speed": 0,
-            "distance": 0,
+            "distance": 0.0,
             "temperature": 0,
             "time": 0,
             "battery": 0,
+            "battery_I": 0,
             "lap": 0,
             'V': 0,
             'I': 0,
@@ -67,6 +69,7 @@ class DataCapture:
         # self.battery_voltmeter_setup(self.board, BATTERY_VOLTMETER_PIN)
         self.solar_panel_serial_setup()
         self.gps_setup()
+        self.battery_serial_setup()
 
     def get_data(self):
         self.update_data()
@@ -82,6 +85,8 @@ class DataCapture:
         self.update_solar_panel()
         self.update_gps()
         # self.update_lap()
+
+        self.update_battery()
     
     def update_time(self):
         t = time.time() - self.start_time
@@ -90,14 +95,23 @@ class DataCapture:
         return
     
     def update_distance(self):
-        #update distance
-        # distance = self.rotation * WHEEL_DIAMETER # m
+        # Ensure the required keys are present in both data dictionaries
+        if "distance" not in self.data or "time" not in self.data or "speed" not in self.data:
+            print("Missing data in self.data")
+            return
 
-        distance = self.prev_data["distance"] + (self.prev_data["time"] - self.data["time"]) / 360 * self.data["speed"] # km
+        try:
+            # Calculate the new distance
+            time_difference = (self.data["time"] - self.prev_data["time"]) / 3600.0  # Convert seconds to hours
+            distance = self.data["distance"] + time_difference * self.data["speed"]  # km
 
-        self.prev_data["distance"] = self.data["distance"]
-        self.data["distance"] = distance
+            # Update distances
+            self.data["distance"] = distance
+        except Exception as e:
+            print(f"Failed to update distance: {e}")
+
         return
+
     
     # def update_speed(self):
     #     dt = self.data["time"] - self.prev_data["time"]
@@ -131,10 +145,21 @@ class DataCapture:
     def read_serial_data(self, ser):
         data = {}
         try:
-            line = ser.readline().decode('latin-1').strip()
-            line_key, line = line.split('\t')
-            data[line_key] = line
-                
+            iterations = 0
+            while ser.in_waiting and iterations < 10:
+                line = ser.readline().decode('latin-1').strip()
+                if line:
+                    # Split the line based on any whitespace or common delimiters
+                    parts = re.split(r'[\t,;| ]+', line)
+                    if len(parts) == 2:
+                        line_key = parts[0]
+                        line_value = parts[1]
+                        data[line_key] = line_value
+                    else:
+                        print(f"Line format error: Not enough parts - Line: {line}")
+                iterations += 1
+            ser.reset_input_buffer()  # Clear the buffer after reading       
+
         except Exception as e:
             print(f"Failed to read data from serial port: {e}")
         return data
@@ -143,6 +168,7 @@ class DataCapture:
         data1 = self.read_serial_data(self.solar_panel_1_serial)
         data2 = self.read_serial_data(self.solar_panel_2_serial)
 
+        print("Solar panel: ")
         print(data1)
         print(data2)
 
@@ -169,14 +195,14 @@ class DataCapture:
             print(f"Failed to update solar panel data: {e}")
 
     def gps_setup(self):
-        self.stream = serial.Serial('COM7', 115200, timeout=3)
+        self.stream = serial.Serial('COM7', 115200, timeout=0)
         self.gps_reader = NMEAReader(self.stream)
 
     def update_gps(self):
         raw_data, parsed_data = self.gps_reader.read()
         if parsed_data is not None:
             try:
-                print(raw_data)
+                # print(raw_data)
                 if hasattr(parsed_data, 'lat'):
                     print("lat: " + str(parsed_data.lat)) 
                     print("long: " + str(parsed_data.lon))
@@ -199,6 +225,27 @@ class DataCapture:
                 self.data["lap"] += 1
                 self.gps_prev_t = time.time()
                 print("Lap detected. Reseting timer to:" + str(self.gps_prev_t))
+
+    def battery_serial_setup(self):
+        try:
+            self.battery_serial = serial.Serial('COM3', 19200, timeout=0) #TODO what is the com port
+        except Exception as e:
+            print(f"Battery panels serial port connection failed: {e}")
+    
+    def update_battery(self):
+        data = self.read_serial_data(self.battery_serial)
+
+        print("Battery: ")
+        print(data)
+        # Combine the data
+        try:
+            if "V" in data:
+                self.data['battery'] = float(data['V'])
+            if "I" in data:
+                self.data['battery_I'] = float(data['I'])
+
+        except Exception as e:
+            print(f"Failed to update battery data: {e}")
 
 
     # def encoder_callback(self, data):
