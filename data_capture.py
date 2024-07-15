@@ -1,9 +1,11 @@
 # data_capture.py
 import serial
 import time
+import re
+
 # from telemetrix import telemetrix
 from pynmeagps import NMEAReader
-import re
+
 
 #physical constants
 WHEEL_DIAMETER = 2.153412 #meters
@@ -37,10 +39,10 @@ class DataCapture:
 
         #data that will be displayed
         self.data = {
-            "speed": 0,
+            "speed": 0.0,
             "distance": 0.0,
             "temperature": 0,
-            "time": 0,
+            "time": 0.0,
             "battery": 0,
             "battery_I": 0,
             "lap": 0,
@@ -57,11 +59,12 @@ class DataCapture:
 
         self.prev_data = self.data
 
-        self.board = None
+        # self.board = None
         self.solar_panel_1_serial = None
         self.solar_panel_2_serial = None
         self.gps_serial = None
         self.gps_reader = None
+        self.battery_serial = None
 
         # self.board_setup()
         # self.dht_setup(self.board, DHT_PIN, self.dht_callback, 11)
@@ -78,13 +81,10 @@ class DataCapture:
     def update_data(self):
         #order matters
         self.update_time()
-        self.update_distance()
         # self.update_speed()
-        #temperature is updated in the callback
-        #battery is updated in the callback
         self.update_solar_panel()
         self.update_gps()
-        # self.update_lap()
+        self.update_distance()
 
         self.update_battery()
     
@@ -107,6 +107,9 @@ class DataCapture:
 
             # Update distances
             self.data["distance"] = distance
+
+            print(f"Calculated time delta: {time_difference}")
+            print(f"Calculated distance: {distance}")
         except Exception as e:
             print(f"Failed to update distance: {e}")
 
@@ -207,17 +210,22 @@ class DataCapture:
                     print("lat: " + str(parsed_data.lat)) 
                     print("long: " + str(parsed_data.lon))
                     self.data["gps"] = [parsed_data.lat, parsed_data.lon]
+                else:
+                    print("Parsed data does not contain lat or long attributes.")
+
                 if  hasattr(parsed_data, 'spd'):
                     print("spd: " + str(parsed_data.spd))
-                    self.data["speed"] = parsed_data.spd * 1.852 # km/h
+                    if parsed_data.spd != 0.0:
+                        self.data["speed"] = parsed_data.spd * 1.852 # km/h
                 else:
-                    print("Parsed data does not contain lat, long, or spd attributes.")
+                    print("Parsed data does not contain spd attribute.")
             except Exception as e:
                 print(f"Failed to update gps data: {e}")
         else:
             print("No gps message.")
             pass
 
+        #update lap
         if time.time() - self.gps_prev_t > 20:
             pos = self.data["gps"]
             #check if we are in the starting area

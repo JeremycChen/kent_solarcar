@@ -1,13 +1,16 @@
 import sys
+import datetime
+import atexit
+
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout 
 from PyQt5.QtCore import QTimer, QDateTime
 from PyQt5.QtGui import QFont
 from PyQt5 import QtWebEngineWidgets
 import folium
 import cv2
+
 import data_capture
-import atexit
-import datetime
+
 
 DISABLE_DATA_CAPTURE = False
 DISABLE_CAMERA = False
