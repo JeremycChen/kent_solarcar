@@ -1,4 +1,4 @@
-#create a python program running on latteapanda that streams live video from camera, from telemetrix import telemetrix (this is to communicate python with arduino), reads speed from Ardurino digital pin 7, reads temperature from Arduino digital pin 4, reads voltage from Arduino analog pin 5, reads gps from COM7 and displays as long and lat, read another voltage/power/and current from COM4 an COM10, display a GUI with camera footage as background and display all the data using labels on the GUIp
+#create a python program running on latteapanda that streams live video from camera, from telemetrix import telemetrix (this is to communicate python with arduino), reads speed from Ardurino digital pin 7, reads temperature from Arduino digital pin 4, reads voltage from Arduino analog pin 5, reads gps from COM12 and displays as long and lat, read another voltage/power/and current from COM20 an COM10, display a GUI with camera footage as background and display all the data using labels on the GUIp
 import sys
 import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget

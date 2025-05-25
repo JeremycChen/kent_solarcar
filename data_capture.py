@@ -70,9 +70,26 @@ class DataCapture:
         # self.dht_setup(self.board, DHT_PIN, self.dht_callback, 11)
         # self.speed_encoder_setup(self.board, ENCODER_PIN)    
         # self.battery_voltmeter_setup(self.board, BATTERY_VOLTMETER_PIN)
+
+        self.connection_status = {
+            'solar1':    {'ok': False, 'err': None},
+            'solar2':    {'ok': False, 'err': None},
+            'gps':       {'ok': False, 'err': None},
+            'battery':   {'ok': False, 'err': None},
+        }
+
         self.solar_panel_serial_setup()
         self.gps_setup()
         self.battery_serial_setup()
+
+
+    def battery_serial_setup(self):
+        try:
+            self.battery_serial = serial.Serial('COM3', 19200, timeout=0)
+            self.connection_status['battery']['ok'] = True
+        except Exception as e:
+            self.battery_serial = None
+            self.connection_status['battery'].update(ok=False, err=str(e))
 
     def get_data(self):
         self.update_data()
@@ -141,11 +158,19 @@ class DataCapture:
     def solar_panel_serial_setup(self):
         try:
             self.solar_panel_1_serial = serial.Serial('COM4', 19200)
-            self.solar_panel_2_serial = serial.Serial('COM10', 19200)
+            self.connection_status['solar1']['ok'] = True
         except Exception as e:
-            print(f"Solar panels serial port connection failed: {e}")
+            self.solar_panel_1_serial = None
+            self.connection_status['solar1'].update(ok=False, err=str(e))
 
-    def read_serial_data(self, ser):
+        try:
+            self.solar_panel_2_serial = serial.Serial('COM10', 19200)
+            self.connection_status['solar2']['ok'] = True
+        except Exception as e:
+            self.solar_panel_2_serial = None
+            self.connection_status['solar2'].update(ok=False, err=str(e))
+
+    def read_serial_data(self, ser, key):
         data = {}
         try:
             iterations = 0
@@ -162,14 +187,14 @@ class DataCapture:
                         print(f"Line format error: Not enough parts - Line: {line}")
                 iterations += 1
             ser.reset_input_buffer()  # Clear the buffer after reading       
-
+            self.connection_status[key].update(ok=True, err=None)
         except Exception as e:
-            print(f"Failed to read data from serial port: {e}")
+            self.connection_status[key].update(ok=False, err=str(e))
         return data
     
     def update_solar_panel(self):
-        data1 = self.read_serial_data(self.solar_panel_1_serial)
-        data2 = self.read_serial_data(self.solar_panel_2_serial)
+        data1 = self.read_serial_data(self.solar_panel_1_serial, 'solar1')
+        data2 = self.read_serial_data(self.solar_panel_2_serial, 'solar2')
 
         print("Solar panel: ")
         print(data1)
@@ -198,8 +223,14 @@ class DataCapture:
             print(f"Failed to update solar panel data: {e}")
 
     def gps_setup(self):
-        self.stream = serial.Serial('COM7', 115200, timeout=0)
-        self.gps_reader = NMEAReader(self.stream)
+        try:
+            self.stream = serial.Serial('COM12', 115200, timeout=0)
+            self.gps_reader = NMEAReader(self.stream)
+            self.connection_status['gps']['ok'] = True
+        except Exception as e:
+            self.stream = None
+            self.gps_reader = None
+            self.connection_status['gps'].update(ok=False, err=str(e))
 
     def update_gps(self):
         raw_data, parsed_data = self.gps_reader.read()
@@ -210,7 +241,9 @@ class DataCapture:
                     print("lat: " + str(parsed_data.lat)) 
                     print("long: " + str(parsed_data.lon))
                     self.data["gps"] = [parsed_data.lat, parsed_data.lon]
+                    self.connection_status['gps'].update(ok=True, err=None)
                 else:
+                    self.connection_status['gps'].update(ok=False, err="Parsed data does not contain lat or lon attributes.")
                     print("Parsed data does not contain lat or long attributes.")
 
                 if  hasattr(parsed_data, 'spd'):
@@ -218,15 +251,18 @@ class DataCapture:
                     if parsed_data.spd != 0.0:
                         self.data["speed"] = parsed_data.spd * 1.852 # km/h
                 else:
+                    self.connection_status['gps'].update(ok=False, err="Parsed data does not contain spd attribute.")
                     print("Parsed data does not contain spd attribute.")
             except Exception as e:
+                self.connection_status['gps'].update(ok=False, err=str(e))
                 print(f"Failed to update gps data: {e}")
         else:
+            self.connection_status['gps'].update(ok=False, err="No GPS data received.")
             print("No gps message.")
             pass
 
         #update lap
-        if time.time() - self.gps_prev_t > 20:
+        if time.time() - self.gps_prev_t > 20 and self.data["gps"] != ['', '']:
             pos = self.data["gps"]
             #check if we are in the starting area
             if GPS_BOUNDS[0][0] > pos[0] > GPS_BOUNDS[1][0] and GPS_BOUNDS[0][1] > pos[1] > GPS_BOUNDS[1][1]: #check for x and check for y
@@ -236,12 +272,15 @@ class DataCapture:
 
     def battery_serial_setup(self):
         try:
-            self.battery_serial = serial.Serial('COM3', 19200, timeout=0) #TODO what is the com port
+            self.battery_serial = serial.Serial('COM3', 19200, timeout=0)
+            self.connection_status['battery']['ok'] = True
         except Exception as e:
-            print(f"Battery panels serial port connection failed: {e}")
+            self.battery_serial = None
+            self.connection_status['battery'].update(ok=False, err=str(e))
+
     
     def update_battery(self):
-        data = self.read_serial_data(self.battery_serial)
+        data = self.read_serial_data(self.battery_serial, 'battery')
 
         print("Battery: ")
         print(data)

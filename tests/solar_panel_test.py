@@ -13,7 +13,7 @@ data = {
             "gps": [0,0],
         }
 
-solar_panel_1_serial = serial.Serial('COM4', 19200)
+solar_panel_1_serial = serial.Serial('COM20', 19200)
 solar_panel_2_serial = serial.Serial('COM10', 19200)
 
 def read_serial_data(ser):

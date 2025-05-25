@@ -271,5 +271,5 @@ setup_touch_sensor()
 
 
 #video_widget = VideoWidget(self.root)  # Create an instance of VideoWidget
-solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', 'COM5'], baud_rate=19200)  # Pass video_widget as an argument
+solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM20', 'COM5'], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()

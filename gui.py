@@ -111,6 +111,25 @@ class Dashboard(QWidget):
         self.back_video = None
 
         if not DISABLE_CAMERA : self.camera_setup()
+        # Right under the other data, insert connection status labels:
+        self.solar1_status_label  = QLabel()
+        self.solar2_status_label  = QLabel()
+        self.gps_status_label     = QLabel()
+        self.battery_status_label = QLabel()
+
+        # choose a smaller font so it doesn’t dominate
+        status_font = QFont('Arial', 10, QFont.Bold)
+        for lbl in (self.solar1_status_label,
+                    self.solar2_status_label,
+                    self.gps_status_label,
+                    self.battery_status_label):
+            lbl.setFont(status_font)
+
+        # put them in your grid
+        data_table_layout.addWidget(self.solar1_status_label, 4, 0)
+        data_table_layout.addWidget(self.solar2_status_label, 4, 1)
+        data_table_layout.addWidget(self.gps_status_label,    4, 2)
+        data_table_layout.addWidget(self.battery_status_label,4, 3)
 
     def camera_setup(self):
         # self.front_video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
@@ -154,23 +173,60 @@ class Dashboard(QWidget):
         self.panel_current_label.setText('Panel I: ' + str(round(data['I'],3)) + 'mA')
         self.panel_ppv_label.setText('Panel PPV: ' + str(round(data['PPV'],3)) + 'W')
         self.panel_voltage_label.setText('Panel V: ' + str(round(data['V'],3)) + 'mV')
-
-        self.map = folium.Map(location=data["gps"], zoom_start=15)
-        folium.Marker(location=data["gps"], popup="Kent Solar Car").add_to(self.map)
-        folium.Rectangle(
-            bounds=data["gps_bounds"],
-            line_join="bevel",
-            dash_array="15, 10, 5, 10, 15",
-            color="blue",
-            line_cap= "round",
-            fill= True,
-            fill_color="red",
-            weight=5,
-            popup="Finish Line",
-            tooltip= "<strong>Finish Line</strong>",
-        ).add_to(self.map)
+        if data['gps'] != ['','']:
+            self.map = folium.Map(location=data["gps"], zoom_start=15)
+            folium.Marker(location=data["gps"], popup="Kent Solar Car").add_to(self.map)
+            folium.Rectangle(
+                bounds=data["gps_bounds"],
+                line_join="bevel",
+                dash_array="15, 10, 5, 10, 15",
+                color="blue",
+                line_cap= "round",
+                fill= True,
+                fill_color="red",
+                weight=5,
+                popup="Finish Line",
+                tooltip= "<strong>Finish Line</strong>",
+            ).add_to(self.map)
 
         self.map_widget.setHtml(self.map.get_root().render())
+        cs = self.data_capture.connection_status
+
+        # set tooltips for each connection-status label
+        for key, label in [
+            ('solar1',  self.solar1_status_label),
+            ('solar2',  self.solar2_status_label),
+            ('gps',     self.gps_status_label),
+            ('battery', self.battery_status_label),
+        ]:
+            status = cs[key]
+            if status['ok']:
+                label.setToolTip("Connected successfully")
+            else:
+                label.setToolTip(status['err'] or "Unknown error")
+
+        def style(ok):
+            return "color: green;" if ok else "color: red;"
+
+        self.solar1_status_label.setText(
+            f"Solar 1: {'OK' if cs['solar1']['ok'] else 'FAIL'}"
+        )
+        self.solar1_status_label.setStyleSheet(style(cs['solar1']['ok']))
+
+        self.solar2_status_label.setText(
+            f"Solar 2: {'OK' if cs['solar2']['ok'] else 'FAIL'}"
+        )
+        self.solar2_status_label.setStyleSheet(style(cs['solar2']['ok']))
+
+        self.gps_status_label.setText(
+            f"GPS: {'OK' if cs['gps']['ok'] else 'FAIL'}"
+        )
+        self.gps_status_label.setStyleSheet(style(cs['gps']['ok']))
+
+        self.battery_status_label.setText(
+            f"Battery: {'OK' if cs['battery']['ok'] else 'FAIL'}"
+        )
+        self.battery_status_label.setStyleSheet(style(cs['battery']['ok']))
 
 if __name__ == '__main__':
     import sys

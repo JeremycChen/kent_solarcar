@@ -192,5 +192,5 @@ def live_video():
 
 gps_dim = (41.72454112609995, -73.4811918422402, 41.72635922342008, -73.47515215049468)
 setup_touch_sensor()
-solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4','COM5'], baud_rate=19200)
+solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM20','COM5'], baud_rate=19200)
 solar.start_loop()

@@ -8,8 +8,8 @@ from telemetrix import telemetrix
 
 # Constants
 ARDUINO_PORT = 'COM3'  # Replace with the appropriate port for your Arduino
-GPS_PORT = 'COM7'  # Replace with the appropriate port for your GPS module
-POWER_PORT_1 = 'COM4'  # Replace with the appropriate port for your first power sensor
+GPS_PORT = 'COM12'  # Replace with the appropriate port for your GPS module
+POWER_PORT_1 = 'COM20'  # Replace with the appropriate port for your first power sensor
 POWER_PORT_2 = 'COM10'  # Replace with the appropriate port for your second power sensor
 
 # Thread for reading data from Arduino

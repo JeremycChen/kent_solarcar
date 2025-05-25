@@ -149,7 +149,7 @@ class SolarCar(object):
         #self.ser1 = serial.Serial(serial_ports[0], baud_rate)
         #self.ser2 = serial.Serial(serial_ports[1], baud_rate)
         try:
-            self.ser1 = serial.Serial('COM4', 19200)
+            self.ser1 = serial.Serial('COM20', 19200)
             self.ser2 = serial.Serial('COM5', 19200)
         except:
             return
@@ -426,5 +426,5 @@ dht(board, DHT_PIN, dht_callback, 11)
 digital_in(board, DIGITAL_PIN)    
 analog_in(board, ANALOG_PIN)
 
-solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM4', ''], baud_rate=19200)  # Pass video_widget as an argument
+solar = SolarCar(get_speed, get_pos, gps_dim, get_touch_sensor, 2.153412, get_temp, live_video, serial_ports=['COM20', ''], baud_rate=19200)  # Pass video_widget as an argument
 solar.start_loop()

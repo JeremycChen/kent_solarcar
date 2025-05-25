@@ -30,7 +30,7 @@ gps_bounds = (33.03467, -97.28418, 33.03458, -97.28470)
 
 lap = 0
 
-GPS = serial.Serial("COM7", 115200)
+GPS = serial.Serial("COM12", 115200)
 
 curr_pos = []
 
